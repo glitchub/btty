@@ -35,31 +35,30 @@ void set_cga(int attr)
     if (attr & 0x80) attron(A_BLINK); else attroff(A_BLINK);
 }
 
-void draw_border(point *screen, point *terminal)
+void draw_border(point *console, point *terminal)
 {
-    if (terminal->x > screen->x || terminal->y > screen->y) die("Terminal size is %dx%d, but screen is only %dx%d\n", terminal->y, terminal->x, screen->y, screen->x);
+    if (terminal->x > console->x || terminal->y > console->y) die("Terminal size is %dx%d, but your console is only %dx%d\n", terminal->y, terminal->x, console->y, console->x);
     set_cga(15);
-    if (terminal->y < screen->y) for (int x=0; x < terminal->x && x < screen->x; x++) mvaddch(terminal->y, x, ACS_HLINE);
-    if (terminal->x < screen->x) for (int y=0; y < terminal->y && y < screen->y; y++) mvaddch(y, terminal->x, ACS_VLINE);
-    if (terminal->x < screen->x && terminal->y < screen->y) mvaddch(terminal->y, terminal->x, ACS_LRCORNER);
+    if (terminal->y < console->y) for (int x=0; x < terminal->x && x < console->x; x++) mvaddch(terminal->y, x, ACS_HLINE);
+    if (terminal->x < console->x) for (int y=0; y < terminal->y && y < console->y; y++) mvaddch(y, terminal->x, ACS_VLINE);
+    if (terminal->x < console->x && terminal->y < console->y) mvaddch(terminal->y, terminal->x, ACS_LRCORNER);
 }
 
-// Query the vcsa and return terminal size, terminal cursor location, and
-// terminal screen contents. Note request pointers may be NULL. *buffer must
-// be free'd by caller.
-void get_vcsa(int vcsa, point *terminal, point *cursor, uint16_t **buffer)
+// Query the vcsa and return terminal size, cursor location, and content. Note
+// request pointers may be NULL. *content must be free'd by caller.
+void get_vcsa(int vcsa, point *terminal, point *cursor, uint16_t **content)
 {
     struct { uint8_t lines, columns, atx, aty; } attr;
     lseek(vcsa, 0, 0);
     if (read(vcsa, &attr, 4) != 4) die("Error reading vcsa attributes: %s\n", strerror(errno));
     if (terminal) { terminal->x = attr.columns; terminal->y = attr.lines; }
     if (cursor) { cursor->x = attr.atx; cursor->y = attr.aty; }
-    if (buffer)
+    if (content)
     {
         int get = attr.lines * attr.columns * 2;
-        *buffer=malloc(get);
-        if (!*buffer) die("Out of memory!\n");
-        if (read(vcsa, *buffer, get) != get) die("Error reading vcsa buffer\n", strerror(errno));
+        *content=malloc(get);
+        if (!*content) die("Out of memory!\n");
+        if (read(vcsa, *content, get) != get) die("Error reading vcsa content\n", strerror(errno));
     }
 }
 
@@ -88,44 +87,44 @@ int main(int argc, char *argv[])
     set_escdelay(100);
     init_cga();
 
-    // screen lr corner
-    point screen;
-    getmaxyx(stdscr, screen.y, screen.x);
+    // console lr corner
+    point console;
+    getmaxyx(stdscr, console.y, console.x);
 
     // terminal lr corner
     point terminal;
     get_vcsa(vcsa, &terminal, NULL, NULL);
-    draw_border(&screen, &terminal);
+    draw_border(&console, &terminal);
 
     while (1)
     {
         point cursor;
-        uint16_t *buffer, *b;
-        get_vcsa(vcsa, &terminal, &cursor, &buffer);
-        b = buffer;
+        uint16_t *content, *b;
+        get_vcsa(vcsa, &terminal, &cursor, &content);
+        b = content;
         for (int y=0; y < terminal.y; y++) for (int x=0; x < terminal.x; x++)
         {
             uint16_t d = *b++;
-            set_cga(d >> 8);
-            mvaddch(y, x, d & 255);
+            set_cga(d >> 8);         // high byte is the color
+            mvaddch(y, x, d & 255);  // low byte is the glyph
         }
-        free(buffer);
+        free(content);
         move(cursor.y, cursor.x);
         refresh();
 
         int k = getch();
-        if (k != ERR)
+        switch(k)
         {
-            if (k == 29) goto done;
-            if (k < 128)
-            {
-                if (ioctl(tty, TIOCSTI, &k) < 0) die("TIOCSTI failed: %s\n", strerror(errno));
+            case ERR: break;
+            case 29: goto done;
+            default:
+                if (k < 128 && ioctl(tty, TIOCSTI, &k) < 0) die("TIOCSTI failed (do you need root?): %s\n", strerror(errno));
                 if (k == 12)
                 {
                     clear();
-                    draw_border(&screen, &terminal);
+                    draw_border(&console, &terminal);
                 }
-            }
+                break;
         }
     }
 
