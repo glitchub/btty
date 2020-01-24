@@ -1,0 +1,13 @@
+Usage:
+
+    btty [N]
+
+Provides access to virtual terminal associated with /dev/ttyN, default N is 1.
+Useful for starting Xwindows via ssh, for example.
+
+All key codes are passed verbatim except '^]' which exits the program.
+
+^L is passed to the virtual terminal, but also triggers a redraw of the local
+screen.
+
+Note you may need to set the client $TERM to match your screen's $TERM.
