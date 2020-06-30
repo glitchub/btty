@@ -37,7 +37,8 @@ void set_cga(int attr)
 
 void draw_border(point *console, point *terminal)
 {
-    if (terminal->x > console->x || terminal->y > console->y) die("Terminal size is %dx%d, but your console is only %dx%d\n", terminal->y, terminal->x, console->y, console->x);
+    if (terminal->x > console->x || terminal->y > console->y)
+        die("Terminal size is %dx%d, but your console is only %dx%d\n", terminal->x, terminal->y, console->x, console->y);
     set_cga(15);
     if (terminal->y < console->y) for (int x=0; x < terminal->x && x < console->x; x++) mvaddch(terminal->y, x, ACS_HLINE);
     if (terminal->x < console->x) for (int y=0; y < terminal->y && y < console->y; y++) mvaddch(y, terminal->x, ACS_VLINE);
@@ -58,7 +59,7 @@ void get_vcsa(int vcsa, point *terminal, point *cursor, uint16_t **content)
         int get = attr.lines * attr.columns * 2;
         *content=malloc(get);
         if (!*content) die("Out of memory!\n");
-        if (read(vcsa, *content, get) != get) die("Error reading vcsa content\n", strerror(errno));
+        if (read(vcsa, *content, get) != get) die("Error reading vcsa content: %s\n", strerror(errno));
     }
 }
 
@@ -118,7 +119,8 @@ int main(int argc, char *argv[])
             case ERR: break;
             case 29: goto done;
             default:
-                if (k < 128 && ioctl(tty, TIOCSTI, &k) < 0) die("TIOCSTI failed (do you need root?): %s\n", strerror(errno));
+                if (k < 128 && ioctl(tty, TIOCSTI, &k) < 0)
+                    die("TIOCSTI failed (do you need root?): %s\n", strerror(errno));
                 if (k == 12)
                 {
                     clear();
@@ -133,5 +135,3 @@ int main(int argc, char *argv[])
     printf("Done\n");
     return 0;
 }
-
-
