@@ -6,8 +6,8 @@ Provide access to virtual terminal associated with /dev/ttyN on the current
 console. Default N is 1. This can used to start Xwindows via ssh, for example.
 
 All key codes are passed verbatim (except 'ctrl-]'), but note your console's
-idea idea of what an extended key sqquence is may not agree with the terminal's
-(and changing the terminal's TERM probably won't help).
+idea of what an extended key sequence is may not agree with the terminal's (and
+changing the terminal's TERM probably won't help).
 
 Ctrl-L is passed to the terminal, but also triggers a redraw of the console.
 
@@ -15,3 +15,8 @@ Ctrl-] exits the program.
 
 Program will display the contents of the terminal but the abort on first
 keypress if not running as root.
+
+Program will abort with error if the virtual console is larger than the current
+console. In this case you can change the virtual console size with:
+
+    stty rows $LINES cols $COLUMNS < /dev/ttyX
